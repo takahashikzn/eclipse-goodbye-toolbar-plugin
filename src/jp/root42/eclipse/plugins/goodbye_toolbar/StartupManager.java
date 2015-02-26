@@ -30,22 +30,35 @@ public class StartupManager
     @Override
     public void earlyStartup() {
 
+        Display.getDefault().asyncExec(new Runnable() {
+            @Override
+            public void run() {
+                StartupManager.this.init();
+            }
+        });
+    }
+
+    private void init() {
+
         final IWorkbench workbench = PlatformUI.getWorkbench();
 
         workbench.addWindowListener(new IWindowListener() {
 
             @Override
             public void windowOpened(final IWorkbenchWindow window) {
+                debug.info("windowDeactivated");
                 asyncHideToolbar(window);
             }
 
             @Override
             public void windowDeactivated(final IWorkbenchWindow window) {
+                debug.info("windowDeactivated");
                 asyncHideToolbar(window);
             }
 
             @Override
             public void windowClosed(final IWorkbenchWindow window) {
+                debug.info("windowClosed");
                 workbench.removeWindowListener(this);
             }
 
@@ -58,31 +71,38 @@ public class StartupManager
 
                     @Override
                     public void partOpened(final IWorkbenchPart part) {
+                        debug.info("partOpened");
                         asyncHideToolbar(window);
                     }
 
                     @Override
                     public void partClosed(final IWorkbenchPart part) {
+                        debug.info("partClosed");
                         page.removePartListener(this);
                     }
 
                     @Override
                     public void partDeactivated(final IWorkbenchPart part) {
+                        debug.info("partDeactivated");
                         asyncHideToolbar(window);
                     }
 
                     @Override
                     public void partBroughtToTop(final IWorkbenchPart part) {
+                        debug.info("partBroughtToTop");
                         asyncHideToolbar(window);
                     }
 
                     @Override
                     public void partActivated(final IWorkbenchPart part) {
+                        debug.info("partActivated");
                         asyncHideToolbar(window);
                     }
                 });
             }
         });
+
+        asyncHideToolbar(workbench.getActiveWorkbenchWindow());
     }
 
     private static void asyncHideToolbar(final IWorkbenchWindow window) {
@@ -98,10 +118,6 @@ public class StartupManager
     private static void hideToolbar(final IWorkbenchWindow window) {
 
         final Shell mainShell = window.getShell();
-
-        if (mainShell.getChildren().length == 0) {
-            debug.warn("mainShell has no child: %s", mainShell.getText());
-        }
 
         boolean modified = false;
 
@@ -124,6 +140,7 @@ public class StartupManager
         }
 
         if (modified) {
+            debug.info("GOODBYE TOOLBAR!!");
             mainShell.layout();
         }
     }
@@ -187,7 +204,17 @@ public class StartupManager
             this.console().println(String.format("INFO: " + msg, params));
         }
 
+        @SuppressWarnings("unused")
         public void warn(final Object msg, final Object... params) {
+            if (disabled) {
+                return;
+            }
+
+            this.console().println(String.format("WARN: " + msg, params));
+        }
+
+        @SuppressWarnings("unused")
+        public void error(final Object msg, final Object... params) {
             if (disabled) {
                 return;
             }
