@@ -1,14 +1,14 @@
 package jp.root42.eclipse.plugins.goodbye_toolbar;
 
-import java.util.Timer;
-import java.util.TimerTask;
-
-import org.eclipse.swt.custom.CBanner;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.ui.IPartListener;
 import org.eclipse.ui.IStartup;
+import org.eclipse.ui.IWindowListener;
+import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPage;
+import org.eclipse.ui.IWorkbenchPart;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.PlatformUI;
@@ -25,71 +25,111 @@ import org.eclipse.ui.console.MessageConsoleStream;
 public class StartupManager
     implements IStartup {
 
+    private static final Debug debug = new Debug();
+
     @Override
     public void earlyStartup() {
 
-        Display.getDefault().asyncExec(new ToolbarHideTask());
+        final IWorkbench workbench = PlatformUI.getWorkbench();
+
+        workbench.addWindowListener(new IWindowListener() {
+
+            @Override
+            public void windowOpened(final IWorkbenchWindow window) {
+                asyncHideToolbar(window);
+            }
+
+            @Override
+            public void windowDeactivated(final IWorkbenchWindow window) {
+                asyncHideToolbar(window);
+            }
+
+            @Override
+            public void windowClosed(final IWorkbenchWindow window) {
+                workbench.removeWindowListener(this);
+            }
+
+            @Override
+            public void windowActivated(final IWorkbenchWindow window) {
+
+                final IWorkbenchPage page = window.getActivePage();
+
+                page.addPartListener(new IPartListener() {
+
+                    @Override
+                    public void partOpened(final IWorkbenchPart part) {
+                        asyncHideToolbar(window);
+                    }
+
+                    @Override
+                    public void partClosed(final IWorkbenchPart part) {
+                        page.removePartListener(this);
+                    }
+
+                    @Override
+                    public void partDeactivated(final IWorkbenchPart part) {
+                        asyncHideToolbar(window);
+                    }
+
+                    @Override
+                    public void partBroughtToTop(final IWorkbenchPart part) {
+                        asyncHideToolbar(window);
+                    }
+
+                    @Override
+                    public void partActivated(final IWorkbenchPart part) {
+                        asyncHideToolbar(window);
+                    }
+                });
+            }
+        });
     }
 
-    private static class ToolbarHideTask
-        implements Runnable {
+    private static void asyncHideToolbar(final IWorkbenchWindow window) {
 
-        private final Debug debug = new Debug();
+        Display.getDefault().asyncExec(new Runnable() {
+            @Override
+            public void run() {
+                hideToolbar(window);
+            }
+        });
+    }
 
-        @Override
-        public void run() {
+    private static void hideToolbar(final IWorkbenchWindow window) {
 
-            final Timer t = new Timer(true);
+        final Shell mainShell = window.getShell();
 
-            t.scheduleAtFixedRate(new TimerTask() {
-                @Override
-                public void run() {
-                    ToolbarHideTask.this.hideToolbar();
-                }
-            }, 0, 500);
+        if (mainShell.getChildren().length == 0) {
+            debug.warn("mainShell has no child: %s", mainShell.getText());
         }
 
-        private void hideToolbar() {
-            // for (final IWorkbenchWindow window : PlatformUI.getWorkbench().getWorkbenchWindows()) {
-            // this.hideToolbar(window);
-            // }
-            this.hideToolbar(PlatformUI.getWorkbench().getActiveWorkbenchWindow());
-        }
+        boolean modified = false;
 
-        private void hideToolbar(final IWorkbenchWindow window) {
-            if (window == null) {
-                return;
-            }
+        for (final Control child : mainShell.getChildren()) {
 
-            this.debug.info("hideToolbar: %s", window);
+            if (isToolbar(child)) {
 
-            final Shell mainShell = window.getShell();
-            if (mainShell == null) {
-                return;
-            }
+                if (child.isVisible()) {
+                    child.setVisible(false);
+                    modified = true;
+                    debug.info("invisible control: %s", child);
+                }
 
-            if (mainShell.getChildren().length == 0) {
-                this.debug.warn("mainShell has no child: %s", mainShell.getText());
-            }
-
-            for (final Control child : mainShell.getChildren()) {
-                if ((CBanner.class == child.getClass())) {
-
-                    if (child.isVisible()) {
-                        child.setVisible(false);
-                        this.debug.info("invisible control: %s", child);
-                    }
-
-                    if (child.isEnabled()) {
-                        child.setEnabled(false);
-                        this.debug.info("disable control: %s", child);
-                    }
-
+                if (child.isEnabled()) {
+                    child.setEnabled(false);
+                    modified = true;
+                    debug.info("disable control: %s", child);
                 }
             }
+        }
 
+        if (modified) {
             mainShell.layout();
         }
+    }
+
+    private static boolean isToolbar(final Control child) {
+        return "org-eclipse-ui-main-toolbar".equals(child.getData("org.eclipse.e4.ui.css.id"));
     }
 
     private static class Debug {
