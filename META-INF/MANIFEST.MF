@@ -1,0 +1,11 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: GoodBye Toolbar Plugin
+Bundle-SymbolicName: jp.root42.eclipse.plugins.goodbye_toolbar;singleton:=true
+Bundle-Version: 0.0.1
+Bundle-Vendor: takahashikzn
+Require-Bundle: org.eclipse.ui,
+ org.eclipse.core.runtime,
+ org.eclipse.ui.console
+Bundle-RequiredExecutionEnvironment: JavaSE-1.6
+Bundle-Activator: jp.root42.eclipse.plugins.goodbye_toolbar.Activator
