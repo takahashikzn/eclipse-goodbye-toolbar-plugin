@@ -31,6 +31,7 @@ public class StartupManager
     public void earlyStartup() {
 
         Display.getDefault().asyncExec(new Runnable() {
+
             @Override
             public void run() {
                 StartupManager.this.init();
@@ -108,6 +109,7 @@ public class StartupManager
     private static void asyncHideToolbar(final IWorkbenchWindow window) {
 
         Display.getDefault().asyncExec(new Runnable() {
+
             @Override
             public void run() {
                 hideToolbar(window);
@@ -118,6 +120,10 @@ public class StartupManager
     private static void hideToolbar(final IWorkbenchWindow window) {
 
         final Shell mainShell = window.getShell();
+
+        if ((mainShell == null) || (mainShell.getChildren() == null)) {
+            return;
+        }
 
         boolean modified = false;
 
